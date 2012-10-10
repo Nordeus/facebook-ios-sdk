@@ -1026,7 +1026,10 @@ static FBSession *g_activeSession = nil;
                                                             error.localizedDescription);
                                            
                                            // this means the user has not signed-on to Facebook via the OS
-                                           BOOL isUntosedDevice = (!granted && error.code == ACErrorAccountNotFound);
+//                                           BOOL isUntosedDevice = (!granted && error.code == ACErrorAccountNotFound);
+                                           
+//                                         NOTE: Changed by Nordeus staff.
+                                           BOOL isUntosedDevice = !granted;
                                            
                                            // requestAccessToAccountsWithType:options:completion: completes on an
                                            // arbitrary thread; let's process this back on our main thread
@@ -1102,7 +1105,8 @@ static FBSession *g_activeSession = nil;
                                                        // if we made it this far into the reauth case with an untosed device, then
                                                        // it is time to invalidate the session
                                                        if (isUntosedDevice) {
-                                                           [self closeAndClearTokenInformation];
+//                                                           NOTE: Changed by Nordeus staff.
+//                                                           [self closeAndClearTokenInformation];
                                                        }
                                                    }
                                                }
