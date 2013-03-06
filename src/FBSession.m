@@ -1024,8 +1024,11 @@ static FBSession *g_activeSession = nil;
         appID:self.appID
         session:self
         handler:^(NSString *oauthToken, NSError *accountStoreError) {           
-            BOOL isUntosedDevice = (!oauthToken && accountStoreError.code == ACErrorAccountNotFound);
+//            BOOL isUntosedDevice = (!oauthToken && accountStoreError.code == ACErrorAccountNotFound);
             
+//			NOTE: Changed by Nordeus staff.
+			BOOL isUntosedDevice = !oauthToken;
+			
             int millisecondsSinceUIWasPotentiallyShown = [FBUtility currentTimeInMilliseconds] - timePriorToShowingUI;
             
             // There doesn't appear to be a reliable way to determine whether or not a UI was invoked
@@ -1146,7 +1149,7 @@ static FBSession *g_activeSession = nil;
                     // if we made it this far into the reauth case with an untosed device, then
                     // it is time to invalidate the session
                     if (isUntosedDevice) {
-                        [self closeAndClearTokenInformation];
+						//[self closeAndClearTokenInformation];
                     }
                 }
             }
