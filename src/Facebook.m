@@ -117,7 +117,7 @@ static NSString *const FBexpirationDatePropertyName = @"expirationDate";
         self.urlSchemeSuffix = urlSchemeSuffix;
         
         // observe tokenCaching properties so we can forward KVO
-        [self.tokenCaching addObserver:self 
+        [self.tokenCaching addObserver:self
                             forKeyPath:FBaccessTokenPropertyName
                                options:NSKeyValueObservingOptionPrior 
                                context:tokenContext];
@@ -138,10 +138,18 @@ static NSString *const FBexpirationDatePropertyName = @"expirationDate";
     _requestExtendingAccessToken.delegate = nil;
 
     [_session release];
+	
     // remove KVOs for tokenCaching
-    [_tokenCaching removeObserver:self forKeyPath:FBaccessTokenPropertyName context:tokenContext];
-    [_tokenCaching removeObserver:self forKeyPath:FBexpirationDatePropertyName context:tokenContext];
-    [_tokenCaching release];
+	
+	[_tokenCaching removeObserver:self forKeyPath:FBaccessTokenPropertyName];	
+	// This method is for ios 5.0 and later
+    //[_tokenCaching removeObserver:self forKeyPath:FBaccessTokenPropertyName context:tokenContext];
+	
+	[_tokenCaching removeObserver:self forKeyPath:FBexpirationDatePropertyName];
+	// This method is for ios 5.0 and later
+    //[_tokenCaching removeObserver:self forKeyPath:FBexpirationDatePropertyName context:tokenContext];
+   
+	[_tokenCaching release];
 
     for (FBRequest* _request in _requests) {
         [_request removeObserver:self forKeyPath:requestFinishedKeyPath];
