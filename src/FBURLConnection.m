@@ -183,7 +183,10 @@ static NSArray* _cdnHosts;
     self.handler = nil;
     @try {
         [self invokeHandler:handler error:error response:nil responseData:nil];
-    } @finally {
+    }
+	@catch (NSException* e) {
+	}
+	@finally {
         [handler release];
         [self release];
         [error release];
@@ -205,7 +208,10 @@ didReceiveResponse:(NSURLResponse *)response {
   didFailWithError:(NSError *)error {
     @try {
         [self invokeHandler:self.handler error:error response:nil responseData:nil];
-    } @finally {
+    }
+	@catch (NSException* e) {
+	}
+	@finally {
         self.handler = nil;
     }
 }
@@ -219,7 +225,10 @@ didReceiveResponse:(NSURLResponse *)response {
 
     @try {
         [self invokeHandler:self.handler error:nil response:self.response responseData:self.data];
-    } @finally {
+    }
+	@catch (NSException* e) {
+	}
+	@finally {
         self.handler = nil;
     }
 }
@@ -243,7 +252,10 @@ didReceiveResponse:(NSURLResponse *)response {
                         textEncodingName:@"utf8"];
                 [self invokeHandler:self.handler error:nil response:cacheResponse responseData:cachedData];
                 [cacheResponse release];
-            } @finally {
+            }
+			@catch (NSException* e) {
+			}
+			@finally {
                 self.handler = nil;
             }
 
