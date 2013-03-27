@@ -165,7 +165,7 @@ static FBSystemAccountStoreAdapter* _singletonInstance = nil;
     // construct access options
     NSDictionary *options = nil;
 	if (self.accountTypeFB != nil) {
-		[NSDictionary dictionaryWithObjectsAndKeys:
+		options = [NSDictionary dictionaryWithObjectsAndKeys:
 			 appID, ACFacebookAppIdKey,
 			 permissionsToUse, ACFacebookPermissionsKey,
 			 audience, ACFacebookAudienceKey, // must end on this key/value due to audience possibly being nil
