@@ -163,11 +163,15 @@ static FBSystemAccountStoreAdapter* _singletonInstance = nil;
     }
     
     // construct access options
-    NSDictionary *options = [NSDictionary dictionaryWithObjectsAndKeys:
-                             appID, ACFacebookAppIdKey,
-                             permissionsToUse, ACFacebookPermissionsKey,
-                             audience, ACFacebookAudienceKey, // must end on this key/value due to audience possibly being nil
-                             nil];
+    NSDictionary *options = nil;
+	if (self.accountTypeFB != nil) {
+		[NSDictionary dictionaryWithObjectsAndKeys:
+			 appID, ACFacebookAppIdKey,
+			 permissionsToUse, ACFacebookPermissionsKey,
+			 audience, ACFacebookAudienceKey, // must end on this key/value due to audience possibly being nil
+			 nil];
+	}
+	
     
     //wrap the request call into a separate block to help with possibly block chaining below.
     void(^requestAccessBlock)(void) = ^{
