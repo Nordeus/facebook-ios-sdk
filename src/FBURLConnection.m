@@ -258,7 +258,10 @@ didReceiveResponse:(NSURLResponse *)response {
                         textEncodingName:@"utf8"];
                 [self logAndInvokeHandler:self.handler response:cacheResponse responseData:cachedData];
                 [cacheResponse release];
-            } @finally {
+            }
+			@catch (NSException* e) {
+			}
+			@finally {
                 self.handler = nil;
             }
 
