@@ -16,20 +16,18 @@
 
 #import <Social/Social.h>
 
+#import "FacebookSDK.h"
 #import "FBSession+Internal.h"
 #import "FBAccessTokenData.h"
 #import "FBWebDialogs.h"
 #import "FBUtility.h"
 #import "FBDialog.h"
-#import "FBSDKVersion.h"
 #import "FBViewController+Internal.h"
 #import "FBFrictionlessDialogSupportDelegate.h"
 #import "FBFrictionlessRequestSettings.h"
 #import "FBFrictionlessRecipientCache.h"
 #import "FBSettings.h"
 #import "FBLogger.h"
-
-static NSString* dialogBaseURL = @"https://m." FB_BASE_URL "/dialog/";
 
 // this is an implementation detail class which acts
 // as the delegate in or to map to a block 
@@ -67,7 +65,10 @@ static NSString* dialogBaseURL = @"https://m." FB_BASE_URL "/dialog/";
 
 - (void)dealloc {
     self.handler = nil;
-    self.dialog = nil;
+    if (self.dialog) {
+        self.dialog.delegate = nil;
+        self.dialog = nil;
+    }
     self.dialogMethod = nil;
     self.parameters = nil;
     self.session = nil;
@@ -90,7 +91,10 @@ static NSString* dialogBaseURL = @"https://m." FB_BASE_URL "/dialog/";
 - (void)releaseSelfIfNeeded {
     self.handler = nil; // insurance
     self.delegate = nil; // insurance
-    self.dialog = nil;
+    if (self.dialog) {
+        self.dialog.delegate = nil;
+        self.dialog = nil;
+    }
     if (_isSelfRetained) {
         [self autorelease];
         _isSelfRetained = NO;
@@ -191,7 +195,7 @@ static NSString* dialogBaseURL = @"https://m." FB_BASE_URL "/dialog/";
                                 handler:(FBWebDialogHandler)handler
                                delegate:(id<FBWebDialogsDelegate>)delegate {
     
-    NSString *dialogURL = [dialogBaseURL stringByAppendingString:dialog];
+    NSString *dialogURL = [[FBUtility buildFacebookUrlWithPre:@"https://m." withPost:@"/dialog/"] stringByAppendingString:dialog];
     
     NSMutableDictionary *parametersImpl = [NSMutableDictionary dictionary];
 

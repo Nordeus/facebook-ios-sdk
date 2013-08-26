@@ -58,6 +58,8 @@
 }
 
 - (void)applicationDidBecomeActive:(UIApplication *)application	{
+    [FBAppEvents activateApp];
+  
     // Facebook SDK * login flow *
     // We need to properly handle activation of the application with regards to SSO
     //  (e.g., returning from iOS 6.0 authorization dialog or from fast app switching).
@@ -71,14 +73,13 @@
     // [FBProfilePictureView class];
     
     self.window = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
-    self.mainViewController = [[SCViewController alloc] initWithNibName:@"SCViewController"
-                                                                 bundle:nil];
+    [self resetMainViewController];
     self.loginViewController = [[SCLoginViewController alloc] initWithNibName:@"SCLoginViewController"
                                                                        bundle:nil];
     self.navigationController = [[UINavigationController alloc] initWithRootViewController:self.loginViewController];
     self.navigationController.delegate = self;
     self.window.rootViewController = self.navigationController;
-
+    
     [self.window makeKeyAndVisible];
     
     // Facebook SDK * pro-tip *
@@ -119,6 +120,11 @@
 
 - (void)navigationController:(UINavigationController *)navigationController willShowViewController:(UIViewController *)viewController animated:(BOOL)animated {
     self.isNavigating = YES;
+}
+
+- (void)resetMainViewController {
+    self.mainViewController = [[SCViewController alloc] initWithNibName:@"SCViewController"
+                                                                 bundle:nil];
 }
 
 @end

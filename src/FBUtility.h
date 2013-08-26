@@ -59,22 +59,29 @@ typedef enum FBAdvertisingTrackingStatus {
 + (NSArray*)addBasicInfoPermission:(NSArray*)permissions;
 + (void)fetchAppSettings:(NSString *)appID
                 callback:(void (^)(FBFetchedAppSettings *, NSError *))callback;
+// Only returns nil if no settings have been fetched; otherwise it returns the last fetched settings.
+// If the settings are stale, an async request will be issued to fetch them.
 + (FBFetchedAppSettings *)fetchedAppSettings;
 + (NSString *)attributionID;
 + (NSString *)advertiserID;
 + (FBAdvertisingTrackingStatus)advertisingTrackingStatus;
-+ (void)updateParametersWithAdvertisingTrackingStatus:(NSMutableDictionary *)parameters;
++ (void)updateParametersWithEventUsageLimits:(NSMutableDictionary *)parameters;
 
 // Encode a data structure in JSON, any errors will just be logged.
 + (NSString *)simpleJSONEncode:(id)data;
 + (id)simpleJSONDecode:(NSString *)jsonEncoding;
 + (NSString *)simpleJSONEncode:(id)data
-                         error:(NSError **)error;
+                         error:(NSError **)error
+                writingOptions:(NSJSONWritingOptions)writingOptions;
 + (id)simpleJSONDecode:(NSString *)jsonEncoding
                  error:(NSError **)error;
 + (BOOL) isRetinaDisplay;
 + (NSString *)newUUIDString;
 + (BOOL)isRegisteredURLScheme:(NSString *)urlScheme;
+
++ (NSString *) buildFacebookUrlWithPre:(NSString*)pre;
++ (NSString *) buildFacebookUrlWithPre:(NSString*)pre
+                              withPost:(NSString *)post;
 
 @end
  
