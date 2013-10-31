@@ -21,10 +21,10 @@
 typedef enum {
     // The normal retry state where we will perform retries.
     FBRequestConnectionRetryManagerStateNormal,
-    
+
     // Indicates retries are aborted, so the user supplied handlers should be invoked.
     FBRequestConnectionRetryManagerStateAbortRetries,
-    
+
     // Indicates we are going to repair the session, which implies that retries are aborted
     // and supplied handlers are NOT invoked since they will be evaluated after the
     // repair operation is executed.
@@ -70,11 +70,5 @@ typedef enum {
 
 // Add a request to the retry batch.
 -(void) addRequestMetadata:(FBRequestMetadata *)metadata;
-
-// A hack to deal with the async callbacks in FBRequestConnection,
-// specifically this acts as a semaphore-like counter to make sure
-// performRetries is invoked logically once and at the right time. See
-// that method's implementation for more details.
--(void) incrementExpectedPerformRetryCount;
 
 @end

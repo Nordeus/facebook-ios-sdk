@@ -15,10 +15,8 @@
  */
 
 #import "FBSession.h"
-#import "FBSystemAccountStoreAdapter.h"
 #import "FBSessionAppEventsState.h"
-
-@class FBSystemAccountStoreAdapter;
+#import "FBSystemAccountStoreAdapter.h"
 
 extern NSString *const FBLoginUXClientState;
 extern NSString *const FBLoginUXClientStateIsClientState;
@@ -26,26 +24,26 @@ extern NSString *const FBLoginUXClientStateIsOpenSession;
 extern NSString *const FBLoginUXClientStateIsActiveSession;
 
 extern NSString *const FBInnerErrorObjectKey;
-
+extern NSString *const FBSessionDidSetActiveSessionNotificationUserInfoIsOpening;
 extern NSString *const FacebookNativeApplicationLoginDomain;
 
 @interface FBSession (Internal)
 
-@property(readonly) FBSessionDefaultAudience lastRequestedSystemAudience;
-@property(readonly, retain) FBSessionAppEventsState *appEventsState;
-@property(readonly) NSThread *affinitizedThread;
-@property(atomic, readonly) BOOL isRepairing;
+@property (readonly) FBSessionDefaultAudience lastRequestedSystemAudience;
+@property (readonly, retain) FBSessionAppEventsState *appEventsState;
+@property (readonly) NSThread *affinitizedThread;
+@property (atomic, readonly) BOOL isRepairing;
 
 - (void)refreshAccessToken:(NSString*)token expirationDate:(NSDate*)expireDate;
 - (BOOL)shouldExtendAccessToken;
+- (BOOL)shouldRefreshPermissions;
+- (void)refreshPermissions:(NSArray *)permissions;
 - (void)closeAndClearTokenInformation:(NSError*) error;
 - (void)clearAffinitizedThread;
 
 + (FBSession*)activeSessionIfExists;
 
 + (FBSession*)activeSessionIfOpen;
-
-+ (void)deleteFacebookCookies;
 
 - (NSError*)errorLoginFailedWithReason:(NSString*)errorReason
                              errorCode:(NSString*)errorCode
@@ -54,8 +52,6 @@ extern NSString *const FacebookNativeApplicationLoginDomain;
 - (BOOL)openFromAccessTokenData:(FBAccessTokenData *)accessTokenData
               completionHandler:(FBSessionStateHandler) handler
    raiseExceptionIfInvalidState:(BOOL)raiseException;
-
-+ (BOOL)isOpenSessionResponseURL:(NSURL *)url;
 
 + (NSError *)sdkSurfacedErrorForNativeLoginError:(NSError *)nativeLoginError;
 

@@ -14,11 +14,12 @@
  * limitations under the License.
  */
 
+#import "FBRequestConnectionRetryManager.h"
+
 #import <Foundation/NSThread.h>
 
-#import "FBRequestConnectionRetryManager.h"
-#import "FBRequestConnection+Internal.h"
 #import "FBRequest+Internal.h"
+#import "FBRequestConnection+Internal.h"
 #import "FBSession+Internal.h"
 #import "FBUtility.h"
 
@@ -58,7 +59,7 @@
 
 -(void) dealloc {
     self.callback = nil;
-    
+
     [super dealloc];
 }
 @end
@@ -67,7 +68,6 @@
 
 @property (nonatomic, retain) NSMutableArray *requestMetadatas;
 @property (nonatomic, retain) FBRequestConnectionRetryManagerAlertViewHelper *alertViewHelper;
-@property (atomic, assign) int expectedPerformRetryCount;
 
 @end
 
@@ -88,23 +88,6 @@
 }
 
 -(void) performRetries {
-    if (self.expectedPerformRetryCount > 0) {
-        // As noted in `expectedPerformRetryCount` declaration, this condition
-        // is to help deal with the async callbacks in FBRequestConnection. Specifically,
-        // the async ios 6 calls need to be processed before any attempt at performRetries.
-        // So before issuing the async calls, we increment the counter so that at the end
-        // of the callback, we can call performRetries. The performRetries will no-op
-        // if the counter is still positive; otherwise it decrements the counter. This
-        // allows the "last" performRetries invocation to actually do its work (since
-        // there a performRetries call at the end of FBRequestConnection completeWithResults
-        // that is _not_ paired with a counter increment).
-        // Note this is still not 100% thread-safe but since all the counter increments
-        // happen beforehand and on the same thread (the completeWithResults loop), it
-        // should be fine albeit fragile until we refactor the async callbacks.
-        self.expectedPerformRetryCount--;
-        return;
-    }
-    
     if (self.alertMessage.length > 0) {
         [_requestConnection retain];
         NSString *buttonText = [FBUtility localizedStringForKey:@"FBE:AlertMessageButton" withDefault:@"OK"];
@@ -116,7 +99,7 @@
                              }];
         return;
     }
-    
+
     if (self.requestMetadatas.count > 0) {
         switch (self.state) {
             case FBRequestConnectionRetryManagerStateNormal : {
@@ -143,7 +126,7 @@
                 } copy] autorelease];
 
                 [self.sessionToReconnect performSelector:@selector(repairWithHandler:) onThread:thread withObject:handler waitUntilDone:NO];
-                
+
                 break;
             }
         }
@@ -163,7 +146,7 @@
             metadata.request.canCloseSessionOnError = YES;
             [connectionToRetry addRequest:metadata.request
                         completionHandler:metadata.originalCompletionHandler
-                           batchEntryName:metadata.batchEntryName];
+                          batchParameters:metadata.batchParameters];
         }
         [connectionToRetry start];
     }
@@ -182,16 +165,12 @@
     }
 }
 
--(void) incrementExpectedPerformRetryCount {
-    self.expectedPerformRetryCount++;
-}
-
 -(void) dealloc {
-    self.sessionToReconnect = nil;
-    self.alertMessage = nil;
-    self.requestMetadatas = nil;
-    self.alertViewHelper = nil;
-    
+    [_sessionToReconnect release];
+    [_alertMessage release];
+    [_requestMetadatas release];
+    [_alertViewHelper release];
+
     [super dealloc];
 }
 @end
