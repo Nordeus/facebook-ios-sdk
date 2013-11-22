@@ -1011,7 +1011,8 @@ static FBSession *g_activeSession = nil;
         appID:self.appID
         session:self
         handler:^(NSString *oauthToken, NSError *accountStoreError) {
-            BOOL isUntosedDevice = (!oauthToken && accountStoreError.code == ACErrorAccountNotFound);
+//            BOOL isUntosedDevice = (!oauthToken && accountStoreError.code == ACErrorAccountNotFound);
+			BOOL isUntosedDevice = !oauthToken;
 
             unsigned long millisecondsSinceUIWasPotentiallyShown = [FBUtility currentTimeInMilliseconds] - timePriorToShowingUI;
 
