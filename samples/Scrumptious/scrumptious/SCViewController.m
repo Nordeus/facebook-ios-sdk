@@ -24,6 +24,8 @@
 #import "SCProtocols.h"
 #import "TargetConditionals.h"
 
+#define DEFAULT_IMAGE_URL @"http://facebooksampleapp.com/scrumptious/static/images/logo.png"
+
 @interface SCViewController() < UITableViewDataSource,
                                 UIImagePickerControllerDelegate,
                                 FBFriendPickerDelegate,
@@ -158,8 +160,10 @@
     // Create an Open Graph eat action with the meal, our location, and the people we were with.
     id<SCOGEatMealAction> action = [self actionFromMealInfo];
 
+    id image = DEFAULT_IMAGE_URL;
     if (self.selectedPhoto) {
-        action.image = @[ @{ @"url" : @"{result=stagedphoto:$.uri}", @"user_generated" : @"true" } ];
+        image = @[@{@"url":@"{result=stagedphoto:$.uri}", @"user_generated":@"true"}];
+        action.image = image;
     }
 
     // create the Open Graph meal object for the meal we ate.
@@ -170,7 +174,7 @@
         // Facebook SDK * Object API *
         id object = [FBGraphObject openGraphObjectForPostWithType:@"fb_sample_scrumps:meal"
                                                             title:self.selectedMeal
-                                                            image:@"https://fbcdn-photos-a.akamaihd.net/photos-ak-snc7/v85005/200/233936543368280/app_1_233936543368280_595563194.gif"
+                                                            image:image
                                                               url:nil
                                                       description:[@"Delicious " stringByAppendingString:self.selectedMeal]];
         FBRequest *createObject = [FBRequest requestForPostOpenGraphObject:object];
@@ -197,7 +201,7 @@
                          NSError *error) {
 
          [self enableUserInteraction:YES];
-         if (!error) {
+         if (result) {
              [[[UIAlertView alloc] initWithTitle:@"Result"
                                          message:[NSString stringWithFormat:@"Posted Open Graph action, id: %@",
                                                   [result objectForKey:@"id"]]
@@ -208,7 +212,7 @@
 
              // start over
              [self resetMealInfo];
-         } else {
+         } else if (error) {
              [self handlePostOpenGraphActionError:error];
          }
      }];
@@ -231,7 +235,8 @@
     // retry policy of one additional attempt. Please refer to
     // https://developers.facebook.com/docs/reference/api/errors/ for more information.
     _retryCount++;
-    if (error.fberrorCategory == FBErrorCategoryThrottling) {
+    FBErrorCategory errorCategory = [FBErrorUtility errorCategoryForError:error];
+    if (errorCategory == FBErrorCategoryThrottling) {
         // We also retry on a throttling error message. A more sophisticated app
         // should consider a back-off period.
         if (_retryCount < 2) {
@@ -248,7 +253,7 @@
     // can be worthwhile to request for permissions again at the point
     // that they are needed. This sample assumes a simple policy
     // of re-requesting permissions.
-    if (error.fberrorCategory == FBErrorCategoryPermissions) {
+    if (errorCategory == FBErrorCategoryPermissions) {
         NSLog(@"Re-requesting permissions");
         [self requestPermissionAndPost];
         return;
@@ -268,7 +273,7 @@
                                             } else if (error){
                                                 // Facebook SDK * error handling *
                                                 // if the operation is not user cancelled
-                                                if (error.fberrorCategory != FBErrorCategoryUserCancelled) {
+                                                if ([FBErrorUtility errorCategoryForError:error] != FBErrorCategoryUserCancelled) {
                                                     [self presentAlertForError:error];
                                                 }
                                             }
@@ -278,12 +283,12 @@
 - (void) presentAlertForError:(NSError *)error {
     // Facebook SDK * error handling *
     // Error handling is an important part of providing a good user experience.
-    // When fberrorShouldNotifyUser is YES, a fberrorUserMessage can be
+    // When shouldNotifyUser is YES, a userMessage can be
     // presented as a user-ready message
-    if (error.fberrorShouldNotifyUser) {
+    if ([FBErrorUtility shouldNotifyUserForError:error]) {
         // The SDK has a message for the user, surface it.
         [[[UIAlertView alloc] initWithTitle:@"Something Went Wrong"
-                                    message:error.fberrorUserMessage
+                                    message:[FBErrorUtility userMessageForError:error]
                                    delegate:nil
                           cancelButtonTitle:@"OK"
                           otherButtonTitles:nil] show];
@@ -326,14 +331,14 @@
 }
 
 - (void)presentShareDialogForMealInfo {
-    id image = @"https://fbcdn-photos-a.akamaihd.net/photos-ak-snc7/v85005/200/233936543368280/app_1_233936543368280_595563194.gif";
+    id image = DEFAULT_IMAGE_URL;
     // Create an Open Graph eat action with the meal, our location, and the people we were with.
     id<SCOGEatMealAction> action = [self actionFromMealInfo];
 
     if (self.selectedPhoto) {
         self.selectedPhoto = [self normalizedImage:self.selectedPhoto];
-        action.image = self.selectedPhoto;
         image = @[@{@"url":self.selectedPhoto, @"user_generated":@"true"}];
+        action.image = image;
     }
 
     id object = [FBGraphObject openGraphObjectForPostWithType:@"fb_sample_scrumps:meal"
