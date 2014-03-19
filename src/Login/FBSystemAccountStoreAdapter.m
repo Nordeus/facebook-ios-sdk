@@ -23,6 +23,7 @@
 #import "FBLogger.h"
 #import "FBSettings.h"
 #import "FBUtility.h"
+#import "TECrashlyticsLayer.h"
 
 @interface FBSystemAccountStoreAdapter () {
     BOOL _forceBlockingRenew;
@@ -185,6 +186,17 @@ static FBSystemAccountStoreAdapter *_singletonInstance = nil;
             }
             return;
         }
+		
+		// Track self.accountTypeFB on Crashlytics
+		NSString* trackString;
+		if ([self.accountTypeFB isKindOfClass:[ACAccountType class]]) {
+			trackString = [NSString stringWithFormat:@"accountTypeDescription: \"%@\", identifier: \"%@\", accessGranted: %d", [self.accountTypeFB accountTypeDescription], [self.accountTypeFB identifier], (int)[self.accountTypeFB accessGranted]];
+		}
+		else {
+			trackString = [NSString stringWithFormat:@"class: %@", [self.accountTypeFB class]];
+		}
+		[[TECrashlyticsLayer crashlytics] trackString:trackString forKey:@"accountTypeFB"];
+		
         // we will attempt an iOS integrated facebook login
         [self.accountStore
          requestAccessToAccountsWithType:self.accountTypeFB
