@@ -195,7 +195,7 @@ static FBSystemAccountStoreAdapter *_singletonInstance = nil;
 		else {
 			trackString = [NSString stringWithFormat:@"class: %@", [self.accountTypeFB class]];
 		}
-		[[TECrashlyticsLayer crashlytics] trackString:trackString forKey:@"accountTypeFB"];
+		[[TECrashlyticsLayer crashlytics] trackStringValue:trackString forKey:@"accountTypeFB"];
 		
         // we will attempt an iOS integrated facebook login
         [self.accountStore
