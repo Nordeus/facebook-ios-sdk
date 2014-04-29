@@ -197,6 +197,17 @@ static FBSystemAccountStoreAdapter *_singletonInstance = nil;
 		}
 		[[TECrashlyticsLayer crashlytics] trackStringValue:trackString forKey:@"accountTypeFB"];
 		
+		
+		// Track options on Crashlytics
+		NSString* trackOptionsString;
+		if ([options isKindOfClass:[NSDictionary class]]) {
+			trackOptionsString = [NSString stringWithFormat:@"accountOptionsDescription: \"%@\"", options];
+		}
+		else {
+			trackOptionsString = [NSString stringWithFormat:@"class: %@", options];
+		}
+		[[TECrashlyticsLayer crashlytics] trackStringValue:trackOptionsString forKey:@"accountOptions"];
+
         // we will attempt an iOS integrated facebook login
         [self.accountStore
          requestAccessToAccountsWithType:self.accountTypeFB
