@@ -15,21 +15,90 @@
  */
 
 #import "FBAccessTokenData.h"
-#import "FBRequestConnectionIntegrationTests.h"
-#import "FBSession+Internal.h"
-#import "FBTestSession.h"
-#import "FBTestSession+Internal.h"
-#import "FBRequestConnection.h"
-#import "FBRequestConnection+Internal.h"
-#import "FBRequest.h"
-#import "FBTestBlocker.h"
 #import "FBError.h"
+#import "FBIntegrationTests.h"
+#import "FBRequest.h"
+#import "FBRequestConnection+Internal.h"
+#import "FBRequestConnection.h"
+#import "FBSession+Internal.h"
+#import "FBTestBlocker.h"
+#import "FBTestSession+Internal.h"
+#import "FBTestSession.h"
 
 #if defined(FACEBOOKSDK_SKIP_REQUEST_CONNECTION_TESTS)
 
-#pragma message ("warning: Skipping FBRequestConnectionTests")
+#pragma message ("warning: Skipping FBRequestConnectionIntegrationTests")
 
 #else
+
+@interface FBRequestConnectionDelegateProgressTest : NSObject <FBRequestConnectionDelegate>
+@property (nonatomic) NSUInteger beginLoadingInvocationCount;
+@property (nonatomic) NSUInteger finishLoadingInvocationCount;
+@property (nonatomic, copy, readonly) NSArray *errors;
+
+@property (nonatomic) NSUInteger progressInvocationCount;
+@property (nonatomic, getter=isComplete) BOOL complete;
+
+@property (nonatomic, getter=isCached) BOOL cached;
+@end
+
+@implementation FBRequestConnectionDelegateProgressTest {
+@private
+    FBTestBlocker *_blocker;
+    NSMutableArray *_errors;
+}
+
+- (instancetype)initWithBlocker:(FBTestBlocker *)blocker {
+    if ((self = [super init]) != nil) {
+        _blocker = [blocker retain];
+        _errors = [[NSMutableArray alloc] init];
+    }
+    return self;
+}
+
+- (void)dealloc {
+    [_blocker release];
+    [_errors release];
+    [super dealloc];
+}
+
+- (void)requestConnectionWillBeginLoading:(FBRequestConnection *)connection
+                                fromCache:(BOOL)isCached {
+    _cached = isCached;
+    _beginLoadingInvocationCount++;
+}
+
+- (void)requestConnectionDidFinishLoading:(FBRequestConnection *)connection
+                                fromCache:(BOOL)isCached {
+
+    NSAssert(self.isCached == isCached, @"The start and end cache parameters should be the same.");
+
+    _finishLoadingInvocationCount++;
+    [_blocker signal];
+}
+
+- (void)requestConnection:(FBRequestConnection *)connection
+         didFailWithError:(NSError *)error {
+    [_errors addObject:error ? : [NSNull null]];
+}
+
+- (void)     requestConnection:(FBRequestConnection *)connection
+willRetryWithRequestConnection:(FBRequestConnection *)retryConnection {
+}
+
+- (void)requestConnection:(FBRequestConnection *)connection
+          didSendBodyData:(NSInteger)bytesWritten
+        totalBytesWritten:(NSInteger)totalBytesWritten
+totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
+    _progressInvocationCount++;
+    _complete = totalBytesWritten == totalBytesExpectedToWrite;
+}
+@end
+
+#pragma mark -
+
+@interface FBRequestConnectionIntegrationTests : FBIntegrationTests
+@end
 
 @implementation FBRequestConnectionIntegrationTests
 
@@ -39,15 +108,15 @@
     __block int count = 0;
     __block FBTestBlocker *blocker = [[FBTestBlocker alloc] init];
     
-    [connection addRequest:request completionHandler:^(FBRequestConnection *connection, id result, NSError *error) {
-        STAssertEqualObjects(FBErrorOperationCancelled, error.code, @"Expected FBErrorOperationCancelled code for error:%@", error);
-        STAssertEquals(++count, 1, @"Expected handler to only be called once");
+    [connection addRequest:request completionHandler:^(FBRequestConnection *innerConnection, id result, NSError *error) {
+        XCTAssertEqual(FBErrorOperationCancelled, error.code, @"Expected FBErrorOperationCancelled code for error:%@", error);
+        XCTAssertEqual(++count, 1, @"Expected handler to only be called once");
         [blocker signal];
     }];
     [connection start];
     [connection cancel];
     
-    STAssertTrue([blocker waitWithTimeout:10], @" handler was not invoked");
+    XCTAssertTrue([blocker waitWithTimeout:10], @" handler was not invoked");
     
     [connection release];
 }
@@ -91,7 +160,7 @@
 
     // Therefore, only expect the the token refresh piggyback in addition to the original request for /me
     int count = requests.count;
-    STAssertEquals(2,count, @"unexpected number of piggybacks");
+    XCTAssertEqual(2,count, @"unexpected number of piggybacks");
     
     [connection release];
 }
@@ -101,7 +170,7 @@
     FBTestSession *session = [self getSessionWithSharedUserWithPermissions:nil];
     session.forceAccessTokenRefresh = YES;
     // verify session's permissions refresh date is initially in the past.
-    STAssertEquals([NSDate distantPast], session.accessTokenData.permissionsRefreshDate, @"session permission refresh date does not match");
+    XCTAssertEqual([NSDate distantPast], session.accessTokenData.permissionsRefreshDate, @"session permission refresh date does not match");
     
     FBRequest *request = [[[FBRequest alloc] initWithSession:session graphPath:@"me"] autorelease];
     
@@ -117,54 +186,116 @@
 
     // Expect the token refresh and permission refresh to be piggybacked.
     int count = requests.count;
-    STAssertEquals(3,count, @"unexpected number of piggybacks");
+    XCTAssertEqual(3,count, @"unexpected number of piggybacks");
     
     [connection release];
     
-    STAssertTrue([session.accessTokenData.permissionsRefreshDate timeIntervalSinceNow]> -3, @"session permission refresh date should be within a few seconds of now");
+    XCTAssertTrue([session.accessTokenData.permissionsRefreshDate timeIntervalSinceNow]> -3, @"session permission refresh date should be within a few seconds of now");
+}
+
+// a test to make sure the permissions refresh request will no-op
+// if the session had been closed.
+- (void)testPiggybackPermissionsRefreshNoopForClosedSession
+{
+    id session = [OCMockObject partialMockForObject:[self getSessionWithSharedUserWithPermissions:nil]];
+    [session setForceAccessTokenRefresh:YES];
+
+    //partial mock the session so we can make sure session is closed and `handleRefreshPermissions` should do nothing.
+    [[[session stub] andDo:^(NSInvocation *invocation) {
+        XCTAssertFalse([session isOpen], @"session should not be open at this point!");
+    }] handleRefreshPermissions:[OCMArg any]];
+
+    // verify session's permissions refresh date is initially in the past.
+    XCTAssertEqual([NSDate distantPast], [session accessTokenData].permissionsRefreshDate, @"session permission refresh date does not match");
+
+    FBRequest *request = [[[FBRequest alloc] initWithSession:session graphPath:@"me"] autorelease];
+
+    FBTestBlocker *blocker = [[FBTestBlocker alloc] init];
+    FBRequestConnection *connection = [[FBRequestConnection alloc] init];
+    [connection addRequest:request completionHandler:^(FBRequestConnection *innerConnection, id result, NSError *error) {
+        XCTAssertTrue(!error, @"got unexpected error");
+        XCTAssertNotNil(result, @"didn't get expected result");
+        [blocker signal];
+        // Close the session, which should result in the piggyback handlers doing nothing!
+        [session closeAndClearTokenInformation];
+    }];
+    [connection start];
+
+    [blocker wait];
+    [blocker release];
+    [connection release];
+
+    XCTAssertTrue([[session accessTokenData].permissionsRefreshDate timeIntervalSinceNow]> -3, @"session permission refresh date should be within a few seconds of now");
 }
 
 - (void)testCachedRequests
 {
-    FBTestBlocker *blocker = [[FBTestBlocker alloc] init];
+    FBTestBlocker *blocker1 = [[FBTestBlocker alloc] init];
+    FBTestBlocker *blocker2 = [[FBTestBlocker alloc] init];
+
     
     FBTestSession *session = [self getSessionWithSharedUserWithPermissions:nil];
     
     // here we just want to seed the cache, by identifying the cache, and by choosing not to consult the cache
+    FBRequestConnectionDelegateProgressTest *progress = [[FBRequestConnectionDelegateProgressTest alloc] initWithBlocker:blocker2];
     FBRequestConnection *connection = [[FBRequestConnection alloc] init];    
     FBRequest *request = [[[FBRequest alloc] initWithSession:session graphPath:@"me"] autorelease];
+
+    connection.delegate = progress;
     [request.parameters setObject:@"id,first_name" forKey:@"fields"];
-    [connection addRequest:request completionHandler:[self handlerExpectingSuccessSignaling:blocker]];
+    [connection addRequest:request completionHandler:[self handlerExpectingSuccessSignaling:blocker1]];
     [connection startWithCacheIdentity:@"FBUnitTests"
                  skipRoundtripIfCached:NO];
     
-    [blocker wait];
+    [blocker1 wait];
+    XCTAssertTrue([blocker2 waitWithTimeout:3], @"blocker timed out -- should have been fast... only waiting for the run loop to turn");
     
-    STAssertFalse(connection.isResultFromCache, @"Should not have cached, and should have fetched from server");
-    
+    XCTAssertFalse(connection.isResultFromCache, @"Should not have cached, and should have fetched from server");
+
+    XCTAssertTrue(progress.beginLoadingInvocationCount == 1, @"delegate's begin method not called exactly once");
+    XCTAssertTrue(progress.finishLoadingInvocationCount == 1, @"delegate's finish method not called exactly once");
+    XCTAssertTrue(progress.errors.count == 0, @"unexpected error(s) in connection :%@", progress.errors);
+    XCTAssertFalse(progress.isCached, @"The first request in the cache test should not be a cached result.");
+
+    connection.delegate = nil;
+    [progress release];
     [connection release];
-    [blocker release];
+    [blocker1 release];
+    [blocker2 release];
     
     __block BOOL completedWithoutBlocking = NO;
-    
+
+    blocker1 = [[FBTestBlocker alloc] init];
+    blocker2 = [[FBTestBlocker alloc] init];
+
     // here we expect to complete on the cache, so we will confirm that
-    connection = [[FBRequestConnection alloc] init];    
+    progress = [[FBRequestConnectionDelegateProgressTest alloc] initWithBlocker:blocker2];
+    connection = [[FBRequestConnection alloc] init];
     request = [[[FBRequest alloc] initWithSession:session graphPath:@"me"] autorelease];
+
+    connection.delegate = progress;
     [request.parameters setObject:@"id,first_name" forKey:@"fields"];
-    [connection addRequest:request completionHandler:^(FBRequestConnection *connection, id result, NSError *error) {
-        STAssertNotNil(result, @"Expected a successful result");
+    [connection addRequest:request completionHandler:^(FBRequestConnection *innerConnection, id result, NSError *error) {
+        XCTAssertNotNil(result, @"Expected a successful result");
         completedWithoutBlocking = YES;
-        [blocker signal];
+        [blocker1 signal];
     }];
     [connection startWithCacheIdentity:@"FBUnitTests"
                  skipRoundtripIfCached:YES];
     
     // Note despite the skipping of round trip, the completion handler is still dispatched async since we
     // started using the Task framework in FBRequestConnection.
-    STAssertTrue([blocker waitWithTimeout:3], @"blocker timed out");
+    XCTAssertTrue([blocker1 waitWithTimeout:3], @"blocker timed out");
+    XCTAssertTrue([blocker2 waitWithTimeout:3], @"blocker timed out -- should have been fast... only waiting for the run loop to turn");
+
+    XCTAssertTrue(progress.beginLoadingInvocationCount == 1, @"delegate's begin method not called exactly once");
+    XCTAssertTrue(progress.finishLoadingInvocationCount == 1, @"delegate's finish method not called exactly once");
+    XCTAssertTrue(progress.errors.count == 0, @"unexpected error(s) in connection :%@", progress.errors);
+    XCTAssertTrue(progress.isCached, @"The second request in the cache test should be a cached result.");
+
     // should have completed successfully by here
-    STAssertTrue(completedWithoutBlocking, @"Should have called the handler, due to cache hit");
-    STAssertTrue(connection.isResultFromCache, @"Should not have fetched from server");
+    XCTAssertTrue(completedWithoutBlocking, @"Should have called the handler, due to cache hit");
+    XCTAssertTrue(connection.isResultFromCache, @"Should not have fetched from server");
     [connection release];
 }
 
@@ -197,8 +328,8 @@
     FBRequestHandler handler = ^(FBRequestConnection *connection, id<FBGraphObject> result, NSError *error) {
         // There's a lot going on in this test. To make failures easier to understand, giving each
         // of the handlers a number so we can tell what failed.
-        STAssertNotNil(result, @"should have a result here: Handler 1");
-        STAssertNil(error, @"should not have an error here: Handler 1");
+        XCTAssertNotNil(result, @"should have a result here: Handler 1");
+        XCTAssertNil(error, @"should not have an error here: Handler 1");
         [fbids addObject: [[result objectForKey:@"id"] description]];
         [blocker signal];
     };
@@ -213,7 +344,7 @@
     [blocker wait];
     
     if (fbids.count != 3) {
-        STAssertTrue(fbids.count == 3, @"wrong number of fbids, aborting test");
+        XCTAssertTrue(fbids.count == 3, @"wrong number of fbids, aborting test");
         // Things are bad. Continuing isn't going to make them better, and might throw exceptions.
         return;
     }
@@ -226,10 +357,10 @@
                                                        parameters:nil
                                                        HTTPMethod:@"delete"];
     [connection addRequest:deleteRequest
-         completionHandler:^(FBRequestConnection *connection, id result, NSError *error) {
-             STAssertNotNil(result, @"should have a result here: Handler 2");
-             STAssertNil(error, @"should not have an error here: Handler 2");
-             STAssertTrue(0 != fbids.count, @"not enough fbids: Handler 2");
+         completionHandler:^(FBRequestConnection *innerConnection, id result, NSError *error) {
+             XCTAssertNotNil(result, @"should have a result here: Handler 2");
+             XCTAssertNil(error, @"should not have an error here: Handler 2");
+             XCTAssertTrue(0 != fbids.count, @"not enough fbids: Handler 2");
              [fbids removeObjectAtIndex:fbids.count-1];
              [blocker signal];             
          }];
@@ -241,17 +372,17 @@
                                                         nil]
                                             HTTPMethod:nil];
     [connection addRequest:deleteRequest
-         completionHandler:^(FBRequestConnection *connection, id result, NSError *error) {
-             STAssertNotNil(result, @"should have a result here: Handler 3");
-             STAssertNil(error, @"should not have an error here: Handler 3");
-             STAssertTrue(0 != fbids.count, @"not enough fbids: Handler 3");
+         completionHandler:^(FBRequestConnection *innerConnection, id result, NSError *error) {
+             XCTAssertNotNil(result, @"should have a result here: Handler 3");
+             XCTAssertNil(error, @"should not have an error here: Handler 3");
+             XCTAssertTrue(0 != fbids.count, @"not enough fbids: Handler 3");
              [fbids removeObjectAtIndex:fbids.count-1];
              [blocker signal];             
          }];
     
-    [connection addRequest:request completionHandler:^(FBRequestConnection *connection, id result, NSError *error) {
-        STAssertNotNil(result, @"should have a result here: Handler 4");
-        STAssertNil(error, @"should not have an error here: Handler 4");
+    [connection addRequest:request completionHandler:^(FBRequestConnection *innerConnection, id result, NSError *error) {
+        XCTAssertNotNil(result, @"should have a result here: Handler 4");
+        XCTAssertNil(error, @"should not have an error here: Handler 4");
         if (result) {
             [fbids addObject: [[result objectForKey:@"id"] description]];
         }
@@ -263,7 +394,7 @@
     
     [blocker wait];
     if (fbids.count != 2) {
-        STAssertTrue(fbids.count == 2, @"wrong number of fbids, aborting test");
+        XCTAssertTrue(fbids.count == 2, @"wrong number of fbids, aborting test");
         // Things are bad. Continuing isn't going to make them better, and might throw exceptions.
         return;
     }
@@ -278,10 +409,10 @@
                                                    nil]
                                        HTTPMethod:nil] autorelease];
     [request startWithCompletionHandler:
-     ^(FBRequestConnection *connection, id result, NSError *error) {
-         STAssertNotNil(result, @"should have a result here: Handler 5");
-         STAssertNil(error, @"should not have an error here: Handler 5");
-         STAssertTrue(0 != fbids.count, @"not enough fbids: Handler 5");
+     ^(FBRequestConnection *innerConnection, id result, NSError *error) {
+         XCTAssertNotNil(result, @"should have a result here: Handler 5");
+         XCTAssertNil(error, @"should not have an error here: Handler 5");
+         XCTAssertTrue(0 != fbids.count, @"not enough fbids: Handler 5");
          [fbids removeObjectAtIndex:fbids.count-1];
          [blocker signal];
      }];
@@ -290,17 +421,17 @@
                                         graphPath:[fbids objectAtIndex:fbids.count-1] 
                                        parameters:nil 
                                        HTTPMethod:@"delete"] autorelease];
-    [request startWithCompletionHandler:^(FBRequestConnection *connection, id result, NSError *error) {
-        STAssertNotNil(result, @"should have a result here: Handler 6");
-        STAssertNil(error, @"should not have an error here: Handler 6");
-        STAssertTrue(0 != fbids.count, @"not enough fbids: Handler 6");
+    [request startWithCompletionHandler:^(FBRequestConnection *innerConnection, id result, NSError *error) {
+        XCTAssertNotNil(result, @"should have a result here: Handler 6");
+        XCTAssertNil(error, @"should not have an error here: Handler 6");
+        XCTAssertTrue(0 != fbids.count, @"not enough fbids: Handler 6");
         [fbids removeObjectAtIndex:fbids.count-1];
         [blocker signal];
     }];
     
     [blocker wait];
     
-    STAssertTrue(fbids.count == 0, @"Our fbid collection should be empty here");
+    XCTAssertTrue(fbids.count == 0, @"Our fbid collection should be empty here");
 }
 
 - (void)testNilCompletionHandler {
@@ -334,8 +465,8 @@
     NSMutableArray *fbids = [NSMutableArray array];
     
     [postRequest startWithCompletionHandler:^(FBRequestConnection *connection, id result, NSError *error) {
-        STAssertNotNil(result, @"should have a result here: Post Request handler");
-        STAssertNil(error, @"should not have an error here: Post Request handler");
+        XCTAssertNotNil(result, @"should have a result here: Post Request handler");
+        XCTAssertNil(error, @"should not have an error here: Post Request handler");
         [fbids addObject: [[result objectForKey:@"id"] description]];
         [blocker signal];
     }];
@@ -365,8 +496,8 @@
                                              parameters:nil
                                              HTTPMethod:@"delete"] autorelease];
     [deleteRequest startWithCompletionHandler:^(FBRequestConnection *connection, id result, NSError *error) {
-        STAssertNil(result, @"should not have a result here: Dupe-Delete Handler");
-        STAssertNotNil(error, @"should have an error here: Dupe-Delete Handler");
+        XCTAssertNil(result, @"should not have a result here: Dupe-Delete Handler");
+        XCTAssertNotNil(error, @"should have an error here: Dupe-Delete Handler");
         [blocker signal];
     }];
     
@@ -378,27 +509,57 @@
     FBTestSession *session = [self getSessionWithSharedUserWithPermissions:nil];
     FBRequestConnection *connection = [[FBRequestConnection alloc] init];
     FBTestBlocker *blocker = [[FBTestBlocker alloc] initWithExpectedSignalCount:2];
-    // Note these ids are significant in that they are ids of other test users. Since we use FBTestSession
-    // above (which will have a platform test user access token), the ids need to be objects that are visible
-    // to the platform test user (such as other test users).
-    FBRequest *parent = [[[FBRequest alloc] initWithSession:session graphPath:@"?ids=100006424828400,100006675870174"] autorelease];
+
+    NSString *graphPath = [NSString stringWithFormat:@"?ids=%@,%@&fields=id", session.testAppID, session.testUserID];
+    FBRequest *parent = [[[FBRequest alloc] initWithSession:session graphPath:graphPath] autorelease];
     [connection addRequest:parent
-         completionHandler:^(FBRequestConnection *connection, id result, NSError *error) {
-             STAssertNil(error, @"unexpected error in parent request :%@", error);
+         completionHandler:^(FBRequestConnection *innerConnection, id result, NSError *error) {
+             XCTAssertNil(error, @"unexpected error in parent request :%@", error);
              [blocker signal];
          } batchEntryName:@"getactions"];
 
     FBRequest *child = [[[FBRequest alloc] initWithSession:session graphPath:@"?ids={result=getactions:$.*.id}"] autorelease];
     [connection addRequest:child
-         completionHandler:^(FBRequestConnection *connection, id result, NSError *error) {
-             STAssertNil(error, @"unexpected error in child request :%@", error);
-             STAssertNotNil(result, @"expected results");
+         completionHandler:^(FBRequestConnection *innerConnection, id result, NSError *error) {
+             XCTAssertNil(error, @"unexpected error in child request :%@", error);
+             XCTAssertNotNil(result, @"expected results");
              [blocker signal];
          } batchEntryName:nil];
     [connection start];
     [connection release];
 
-    STAssertTrue([blocker waitWithTimeout:60], @"blocker timed out");
+    XCTAssertTrue([blocker waitWithTimeout:60], @"blocker timed out");
+}
+
+- (void)testProgressReporting {
+    FBTestSession *session = [self getSessionWithSharedUserWithPermissions:nil];
+    FBRequestConnection *connection = [[FBRequestConnection alloc] init];
+    FBTestBlocker *blocker1 = [[FBTestBlocker alloc] init];
+    FBTestBlocker *blocker2 = [[FBTestBlocker alloc] init];
+
+    FBRequestConnectionDelegateProgressTest *progress = [[FBRequestConnectionDelegateProgressTest alloc] initWithBlocker:blocker2];
+    connection.delegate = progress;
+
+    FBRequest *request = [[FBRequest alloc] initWithSession:session graphPath:@"me"];
+    [connection addRequest:request completionHandler:[self handlerExpectingSuccessSignaling:blocker1]];
+    [connection start];
+
+    [blocker1 wait];
+    XCTAssertTrue([blocker2 waitWithTimeout:2], @"blocker timed out -- should have been fast... only waiting for the run loop to turn");
+
+    XCTAssertTrue(progress.beginLoadingInvocationCount == 1, @"delegate's begin method not called exactly once");
+    XCTAssertTrue(progress.finishLoadingInvocationCount == 1, @"delegate's finish method not called exactly once");
+    XCTAssertTrue(progress.errors.count == 0, @"unexpected error(s) in connection :%@", progress.errors);
+
+    XCTAssertTrue(progress.progressInvocationCount > 0, @"delegate not sent any progress callbacks");
+    XCTAssertTrue(progress.complete, @"connection completed but didn't notify delegate");
+
+    [connection setDelegate:nil];
+    [request release];
+    [progress release];
+    [blocker2 release];
+    [blocker1 release];
+    [connection release];
 }
 @end
 

@@ -14,21 +14,21 @@
  * limitations under the License.
  */
 
-#import "FBSessionTests.h"
-#import "FBTestSession.h"
-#import "FBRequest.h"
+#import <objc/runtime.h>
+
+#import "FBAccessTokenData+Internal.h"
+#import "FBError.h"
 #import "FBGraphUser.h"
-#import "FBTestBlocker.h"
-#import "FBTests.h"
-#import "FBUtility.h"
+#import "FBInternalSettings.h"
+#import "FBRequest.h"
+#import "FBSession+Internal.h"
 #import "FBSessionTokenCachingStrategy.h"
 #import "FBSessionUtility.h"
 #import "FBSystemAccountStoreAdapter.h"
-#import "FBAccessTokenData+Internal.h"
-#import "FBError.h"
+#import "FBTestBlocker.h"
+#import "FBTestSession.h"
+#import "FBTests.h"
 #import "FBUtility.h"
-#import "FBSettings.h"
-#import <objc/objc-runtime.h>
 
 static NSString *kURLSchemeSuffix = @"URLSuffix";
 
@@ -36,7 +36,7 @@ static NSString *kURLSchemeSuffix = @"URLSuffix";
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
 // This is just to silence compiler warnings since we access internal methods in some tests.
-@interface FBSession (Testing)
+@interface FBSession (FBSessionTests)
 
 @property(readwrite, copy) NSDate *refreshDate;
 @property(readwrite) FBSessionLoginType loginType;
@@ -54,13 +54,17 @@ static NSString *kURLSchemeSuffix = @"URLSuffix";
                    isReauthorize:(BOOL)isReauthorize
              canFetchAppSettings:(BOOL)canFetchAppSettings;
 - (FBSystemAccountStoreAdapter *)getSystemAccountStoreAdapter;
-- (void)callReauthorizeHandlerAndClearState:(NSError *)error;
+- (void)callReauthorizeHandlerAndClearState:(NSError *)error updateDeclinedPermissions:(BOOL)updateDeclinedPermissions;
 
 @end
 
 #pragma mark - Test suite
 
-@implementation FBSessionTests {
+@interface FBSessionTests : FBTests
+@end
+
+@implementation FBSessionTests
+{
     FBTestBlocker *_blocker;
     Method _originalIsRegisteredCheck;
     Method _swizzledIsRegisteredCheck;
@@ -106,7 +110,7 @@ static NSString *kURLSchemeSuffix = @"URLSuffix";
 - (void)testInitWithoutDefaultAppIDThrows {
     @try {
         [[FBSession alloc] init];
-        STFail(@"should have gotten exception");
+        XCTFail(@"should have gotten exception");
     } @catch (NSException *exception) {
     }
 }
@@ -464,7 +468,7 @@ static NSString *kURLSchemeSuffix = @"URLSuffix";
                                        tokenCacheStrategy:mockStrategy];
     
     __block BOOL handlerCalled = NO;
-    [session openWithCompletionHandler:^(FBSession *session, FBSessionState status, NSError *error) {
+    [session openWithCompletionHandler:^(FBSession *innerSession, FBSessionState status, NSError *error) {
         handlerCalled = YES;
     }];
     
@@ -507,12 +511,45 @@ static NSString *kURLSchemeSuffix = @"URLSuffix";
     
     @try {
         [session openWithCompletionHandler:nil];
-        STFail(@"should have gotten an exception");
+        XCTFail(@"should have gotten an exception");
     } @catch (NSException *exception) {
     }
     
     [session release];
     
+}
+
+#pragma mark URL parameters handling tests
+
+// These tests test parameters decoding through handleOpenURL:
+
+- (void) testDeniedPermissionsParamFromHandleOpenURL {
+
+    [FBSettings setDefaultAppID:kTestAppId];
+    FBSession *session = [OCMockObject partialMockForObject:[FBSession alloc]];
+    [(FBSession *)[[(id)session stub] andReturnValue:@(FBSessionStateCreatedOpening)] state];
+    session = [session initWithAppID:kTestAppId
+                         permissions:nil
+                     defaultAudience:FBSessionDefaultAudienceNone
+                     urlSchemeSuffix:nil
+                  tokenCacheStrategy:nil];
+
+    NSString *url = @"fbAnAppId://authorize#e2e=%7B%22submit_0%22%3A1401237872226%7D&expires_in=5184000"
+        "&state=%7B%22is_open_session%22%3Atrue%2C%22is_active_session%22%3Atrue%2C"
+        "%22com.facebook.sdk_client_state%22%3Atrue%2C%223_method%22%3A"
+        "%22fb_application_web_auth%22%2C%220_auth_logger_id%22%3A%22ABA039F1-7650-4B16-A195-AE249915532E%22%7D"
+        "&granted_scopes=public_profile%2Cread_mailbox"
+        "&access_token=FOO&denied_scopes=email%2Cuser_relationships";
+
+    [session handleOpenURL:[NSURL URLWithString:url]];
+
+    NSArray *expectedPermissions = [NSArray arrayWithObjects:@"public_profile", @"read_mailbox", nil];
+    XCTAssertEqualObjects(expectedPermissions, session.permissions, @"");
+
+    NSArray *expectedDeclinedPermissions = [NSArray arrayWithObjects:@"email", @"user_relationships", nil];
+    XCTAssertEqualObjects(expectedDeclinedPermissions, session.declinedPermissions, @"");
+
+    [session release];
 }
 
 #pragma mark Closing tests
@@ -702,7 +739,7 @@ static NSString *kURLSchemeSuffix = @"URLSuffix";
         [session reauthorizeWithPermissions:nil
                                    behavior:FBSessionLoginBehaviorWithFallbackToWebView
                           completionHandler:nil];
-        STFail(@"expected exception");
+        XCTFail(@"expected exception");
     } @catch (NSException *exception) {
     }
 }
@@ -722,7 +759,7 @@ static NSString *kURLSchemeSuffix = @"URLSuffix";
     [session openWithBehavior:FBSessionLoginBehaviorWithNoFallbackToWebView completionHandler:nil];
     assertThatBool(session.isOpen, equalToBool(YES));
     
-    FBSessionRequestPermissionResultHandler handler = ^(FBSession *session, NSError *error) {
+    FBSessionRequestPermissionResultHandler handler = ^(FBSession *innerSession, NSError *error) {
     };
     
     // Because our session is mocked to do nothing with auth requests, it will stay in a "pending"
@@ -731,7 +768,7 @@ static NSString *kURLSchemeSuffix = @"URLSuffix";
     
     @try {
         [session requestNewReadPermissions:nil completionHandler:handler];
-        STFail(@"expected exception");
+        XCTFail(@"expected exception");
     } @catch (NSException *exception) {
     }
 }
@@ -779,17 +816,17 @@ static NSString *kURLSchemeSuffix = @"URLSuffix";
     
     // Because our session is mocked to do nothing with auth requests, it will stay in a "pending"
     // reauth state after this call.
-    [session requestNewReadPermissions:nil completionHandler:^(FBSession *session, NSError *error) {
+    [session requestNewReadPermissions:nil completionHandler:^(FBSession *innerSession, NSError *error) {
     }];
     
     BOOL caughtException = NO;
     @try {
         [session requestNewReadPermissions:nil completionHandler:nil];
-        STFail(@"expected exception");
+        XCTFail(@"expected exception");
     } @catch (NSException *exception) {
         caughtException = YES;
     }
-    STAssertTrue(caughtException, @"expected exception when requesting more permissions.");
+    XCTAssertTrue(caughtException, @"expected exception when requesting more permissions.");
 }
 
 - (void)testRequestNewReadPermissionsFailsIfPassedPublishPermissions {
@@ -801,7 +838,7 @@ static NSString *kURLSchemeSuffix = @"URLSuffix";
     NSArray *requestedPermissions = [NSArray arrayWithObjects:@"permission1", @"publish_permission2", nil];
     @try {
         [session requestNewReadPermissions:requestedPermissions completionHandler:nil];
-        STFail(@"expected exception");
+        XCTFail(@"expected exception");
     } @catch (NSException *exception) {
     }
 }
@@ -863,7 +900,6 @@ static NSString *kURLSchemeSuffix = @"URLSuffix";
 
 #pragma mark Other instance tests
 
-
 - (void)testHandleDidBecomeActiveDoesNothingInCreatedState {
     FBSession *mockSession = [self allocMockSessionWithNoOpAuth];
     FBSession *session = [mockSession initWithAppID:kTestAppId
@@ -873,8 +909,9 @@ static NSString *kURLSchemeSuffix = @"URLSuffix";
                                  tokenCacheStrategy:nil];
     
     [[(id)mockSession reject] close];
-    [[(id)mockSession reject] callReauthorizeHandlerAndClearState:[OCMArg any]];
-    
+    [[(id)mockSession reject] callReauthorizeHandlerAndClearState:[OCMArg any] updateDeclinedPermissions:YES];
+    [[(id)mockSession reject] callReauthorizeHandlerAndClearState:[OCMArg any] updateDeclinedPermissions:NO];
+
     [FBSettings setDefaultAppID:kTestAppId];
     
     [session handleDidBecomeActive];
@@ -922,7 +959,9 @@ static NSString *kURLSchemeSuffix = @"URLSuffix";
                                                             permissions:nil
                                                          expirationDate:[NSDate distantFuture]
                                                               loginType:FBSessionLoginTypeFacebookApplication
-                                                            refreshDate:[NSDate dateWithTimeIntervalSince1970:0]];
+                                                            refreshDate:[NSDate dateWithTimeIntervalSince1970:0]
+                                                 permissionsRefreshDate:nil
+                                                                  appID:kTestAppId];
     
     FBSessionTokenCachingStrategy *mockStrategy = [self createMockTokenCachingStrategyWithToken:token];
     
@@ -1083,7 +1122,7 @@ static NSString *kURLSchemeSuffix = @"URLSuffix";
 - (void)testOpenActiveSessionRequiresDefaultAppId {
     @try {
         [FBSession openActiveSessionWithAllowLoginUI:NO];
-        STFail(@"expected exception");
+        XCTFail(@"expected exception");
     } @catch (NSException *exception) {
     }
 }
@@ -1193,24 +1232,19 @@ static NSString *kURLSchemeSuffix = @"URLSuffix";
     assertThat(activeSession.accessTokenData, equalTo(token));
 }
 
-- (void)testOpenActiveSessionWithReadRequestingReadAndWritePermissionFails {
+- (void)testOpenSessionViaSystemAccountWithReadRequestingReadAndWritePermissionFails {
     [FBSession setDefaultAppID:kTestAppId];
-    
-    FBAccessTokenData *token = [self createValidMockToken];
-    NSArray *tokenPermissions = [NSArray arrayWithObjects:@"permission1", @"publish_permission2", nil];
-    [[[(id)token stub] andReturn:tokenPermissions] permissions];
-    [[FBSessionTokenCachingStrategy defaultInstance] cacheFBAccessTokenData:token];
     
     NSArray *requestedPermissions = [NSArray arrayWithObjects:@"permission1", @"publish_permission2", nil];
     __block BOOL handlerCalled = NO;
     
     @try {
-        [FBSession openActiveSessionWithReadPermissions:requestedPermissions
-                                           allowLoginUI:NO
-                                      completionHandler:^(FBSession *session, FBSessionState status, NSError *error) {
-                                          handlerCalled = YES;
-                                      }];
-        STFail(@"expected exception");
+        FBSession *session = [[[FBSession alloc] initWithPermissions:requestedPermissions] autorelease];
+        [session openWithBehavior:FBSessionLoginBehaviorUseSystemAccountIfPresent
+                completionHandler:^(FBSession *innerSession, FBSessionState status, NSError *error) {
+                    handlerCalled = YES;
+                }];
+        XCTFail(@"expected exception");
     } @catch (NSException *exception) {
     }
     
@@ -1218,8 +1252,6 @@ static NSString *kURLSchemeSuffix = @"URLSuffix";
     
     assertThatBool(handlerCalled, equalToBool(NO));
     assertThat(activeSession, notNilValue());
-    assertThatInt(activeSession.state, equalToInt(FBSessionStateCreatedTokenLoaded));
-    
 }
 
 - (void)testOpenActiveSessionWithPublishRequestingReadAndWritePermissionSucceeds {
@@ -1249,7 +1281,7 @@ static NSString *kURLSchemeSuffix = @"URLSuffix";
     assertThat(activeSession.accessTokenData, equalTo(token));
 }
 
-- (void)testOpenActiveSessionWithPublishAndNoDefaultAudienceFails {
+- (void)testOpenSessionViaSystemAccountWithPublishAndNoDefaultAudienceFails {
     [FBSession setDefaultAppID:kTestAppId];
     
     FBAccessTokenData *token = [self createValidMockToken];
@@ -1261,13 +1293,11 @@ static NSString *kURLSchemeSuffix = @"URLSuffix";
     __block BOOL handlerCalled = NO;
     
     @try {
-        [FBSession openActiveSessionWithPublishPermissions:requestedPermissions
-                                           defaultAudience:FBSessionDefaultAudienceNone
-                                              allowLoginUI:NO
-                                         completionHandler:^(FBSession *session, FBSessionState status, NSError *error) {
-                                             handlerCalled = YES;
-                                         }];
-        STFail(@"expected exception");
+        FBSession *session = [[[FBSession alloc] initWithPermissions:requestedPermissions] autorelease];
+        [session openWithBehavior:FBSessionLoginBehaviorUseSystemAccountIfPresent completionHandler:^(FBSession *innerSession, FBSessionState status, NSError *error) {
+            handlerCalled = YES;
+        }];
+        XCTFail(@"expected exception");
     } @catch (NSException *exception) {
     }
     
@@ -1277,6 +1307,26 @@ static NSString *kURLSchemeSuffix = @"URLSuffix";
     assertThat(activeSession, notNilValue());
     assertThatInt(activeSession.state, equalToInt(FBSessionStateCreatedTokenLoaded));
     
+}
+
+- (void)testV2PermissionsRefresh
+{
+    [FBSession setDefaultAppID:kTestAppId];
+
+    FBAccessTokenData *token = [self createValidMockToken];
+    [[FBSessionTokenCachingStrategy defaultInstance] cacheFBAccessTokenData:token];
+
+    BOOL result = [FBSession openActiveSessionWithAllowLoginUI:NO];
+
+    assertThatBool(result, equalToBool(YES));
+    FBSession *target = [FBSession activeSession];
+    id mockResponse = @{ @"data" : @[ @{@"permission":@"user_likes", @"status":@"granted"},
+                                      @{@"permission":@"user_friends", @"status":@"denied"}
+                                      ] };
+    [target handleRefreshPermissions:mockResponse];
+    assertThatUnsignedInteger(target.permissions.count, equalToUnsignedInteger(1));
+    assertThat(target.permissions, hasItem(@"user_likes"));
+    assertThat(target.declinedPermissions, hasItem(@"user_friends"));
 }
 
 #pragma mark Other statics tests
@@ -1343,6 +1393,30 @@ static NSString *kURLSchemeSuffix = @"URLSuffix";
     assertThatInteger(cookiesForFacebook.count, equalToInteger(0));
 }
 
+- (void)testFetchUserID {
+    FBAccessTokenData *token = [FBAccessTokenData createTokenFromString:@"token"
+                                                            permissions:nil
+                                                    declinedPermissions:nil
+                                                         expirationDate:[NSDate distantFuture]
+                                                              loginType:FBSessionLoginTypeFacebookApplication
+                                                            refreshDate:[NSDate dateWithTimeIntervalSince1970:0]
+                                                 permissionsRefreshDate:nil
+                                                                  appID:kTestAppId
+                                                                 userID:@"4"];
+
+    FBSessionTokenCachingStrategy *mockStrategy = [self createMockTokenCachingStrategyWithToken:token];
+
+    FBSession *session = [[FBSession alloc] initWithAppID:kTestAppId
+                                              permissions:nil
+                                          defaultAudience:FBSessionDefaultAudienceNone
+                                          urlSchemeSuffix:nil
+                                       tokenCacheStrategy:mockStrategy];
+    [session openWithCompletionHandler:nil];
+
+    assertThat(session.accessTokenData.userID, equalTo(@"4"));
+
+}
+
 #pragma mark Helpers
 
 - (BOOL)isSystemVersionAtLeast:(NSString *)desiredVersion {
@@ -1351,9 +1425,10 @@ static NSString *kURLSchemeSuffix = @"URLSuffix";
 
 - (NSHTTPCookieStorage *)addFacebookCookieToSharedStorage {
     NSHTTPCookieStorage *storage = [NSHTTPCookieStorage sharedHTTPCookieStorage];
-    
+
+    NSString *domain = [[FBUtility buildFacebookUrlWithPre:@"m."] stringByDeletingLastPathComponent];
     NSDictionary *cookieProperties = [NSDictionary dictionaryWithObjectsAndKeys:
-                                      [FBUtility buildFacebookUrlWithPre:@"m."], NSHTTPCookieDomain,
+                                      domain, NSHTTPCookieDomain,
                                       @"COOKIE!!!!", NSHTTPCookieName,
                                       @"/", NSHTTPCookiePath,
                                       @"hello", NSHTTPCookieValue,

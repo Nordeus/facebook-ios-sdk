@@ -16,7 +16,7 @@
 
 #import "FBFetchedAppSettings.h"
 
-#import "FBSettings.h"
+#import "FBInternalSettings.h"
 
 @interface FBFetchedAppSettings ()
 
@@ -41,8 +41,9 @@
 }
 
 - (void)dealloc {
-    self.serverAppName = nil;
-    self.appID = nil;
+    [_serverAppName release];
+    [_appID release];
+    [_loginTooltipContent release];
 
     [super dealloc];
 }

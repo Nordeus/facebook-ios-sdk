@@ -14,35 +14,35 @@
  * limitations under the License.
  */
 
-#import "FBSettingsTests.h"
-#ifndef FB_BUILD_ONLY
-#define FB_BUILD_ONLY
-#endif
+#import "FBInternalSettings.h"
+#import "FBTests.h"
 
-#import "FBSettings.h"
+@interface FBSettingsTests : FBTests
+@end
 
-#ifdef FB_BUILD_ONLY
-#undef FB_BUILD_ONLY
-#endif
+typedef NS_ENUM(NSUInteger, FBSettingsTestsMockBetaFlags) {
+    FBSettingsTestsMockBetaNone = 0,
+    FBSettingsTestsMockBetaOne = 1 << 0,
+    FBSettingsTestsMockBetaTwo = 1 << 1,
+};
 
 @implementation FBSettingsTests
 
 - (void)testBetaMode
 {
-    STAssertFalse([FBSettings isBetaFeatureEnabled:FBBetaFeaturesShareDialog], @"share dialog not enabled");
-    [FBSettings enableBetaFeature:FBBetaFeaturesOpenGraphShareDialog];
-    STAssertTrue([FBSettings isBetaFeatureEnabled:FBBetaFeaturesOpenGraphShareDialog], @"OG share dialog enabled");
-    [FBSettings disableBetaFeature:FBBetaFeaturesOpenGraphShareDialog];
-    STAssertFalse([FBSettings isBetaFeatureEnabled:FBBetaFeaturesOpenGraphShareDialog], @"OG share dialog disabled");
-    [FBSettings enableBetaFeatures:FBBetaFeaturesShareDialog | FBBetaFeaturesOpenGraphShareDialog];
-    STAssertTrue([FBSettings isBetaFeatureEnabled:FBBetaFeaturesOpenGraphShareDialog], @"OG share dialog enabled");
-    STAssertTrue([FBSettings isBetaFeatureEnabled:FBBetaFeaturesShareDialog], @"share dialog enabled");
-    [FBSettings disableBetaFeature:FBBetaFeaturesShareDialog];
-    STAssertTrue([FBSettings isBetaFeatureEnabled:FBBetaFeaturesOpenGraphShareDialog], @"OG share dialog enabled");
-    STAssertFalse([FBSettings isBetaFeatureEnabled:FBBetaFeaturesShareDialog], @"share dialog enabled");
-    [FBSettings disableBetaFeature:FBBetaFeaturesOpenGraphShareDialog];
-    STAssertFalse([FBSettings isBetaFeatureEnabled:FBBetaFeaturesOpenGraphShareDialog], @"OG share dialog disabled");
-    STAssertFalse([FBSettings isBetaFeatureEnabled:FBBetaFeaturesShareDialog], @"share dialog enabled");
+    [FBSettings enableBetaFeature:(FBBetaFeatures)FBSettingsTestsMockBetaOne];
+    XCTAssertTrue([FBSettings isBetaFeatureEnabled:(FBBetaFeatures)FBSettingsTestsMockBetaOne]);
+
+    [FBSettings disableBetaFeature:(FBBetaFeatures)FBSettingsTestsMockBetaOne];
+    XCTAssertFalse([FBSettings isBetaFeatureEnabled:(FBBetaFeatures)FBSettingsTestsMockBetaOne]);
+
+    [FBSettings enableBetaFeatures:(FBBetaFeatures)(FBSettingsTestsMockBetaOne | FBSettingsTestsMockBetaTwo)];
+    XCTAssertTrue([FBSettings isBetaFeatureEnabled:(FBBetaFeatures)FBSettingsTestsMockBetaOne]);
+    XCTAssertTrue([FBSettings isBetaFeatureEnabled:(FBBetaFeatures)FBSettingsTestsMockBetaTwo]);
+
+    [FBSettings disableBetaFeature:(FBBetaFeatures)FBSettingsTestsMockBetaTwo];
+    XCTAssertTrue([FBSettings isBetaFeatureEnabled:(FBBetaFeatures)FBSettingsTestsMockBetaOne]);
+    XCTAssertFalse([FBSettings isBetaFeatureEnabled:(FBBetaFeatures)FBSettingsTestsMockBetaTwo]);
 }
 
 @end

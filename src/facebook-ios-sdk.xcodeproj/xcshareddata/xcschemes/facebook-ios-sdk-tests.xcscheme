@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Scheme
-   LastUpgradeVersion = "0500"
+   LastUpgradeVersion = "0510"
    version = "1.3">
    <BuildAction
       parallelizeBuildables = "NO"
@@ -43,7 +43,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "B9CBC518152537270036AA71"
-               BuildableName = "FacebookSDKTests.octest"
+               BuildableName = "FacebookSDKTests.xctest"
                BlueprintName = "FacebookSDKTests"
                ReferencedContainer = "container:facebook-ios-sdk.xcodeproj">
             </BuildableReference>
@@ -61,7 +61,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "B9CBC518152537270036AA71"
-               BuildableName = "FacebookSDKTests.octest"
+               BuildableName = "FacebookSDKTests.xctest"
                BlueprintName = "FacebookSDKTests"
                ReferencedContainer = "container:facebook-ios-sdk.xcodeproj">
             </BuildableReference>
@@ -71,7 +71,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "B9CBC518152537270036AA71"
-            BuildableName = "FacebookSDKTests.octest"
+            BuildableName = "FacebookSDKTests.xctest"
             BlueprintName = "FacebookSDKTests"
             ReferencedContainer = "container:facebook-ios-sdk.xcodeproj">
          </BuildableReference>
@@ -80,6 +80,11 @@
          <EnvironmentVariable
             key = "IOS_SDK_TEST_APP_ID"
             value = "$(IOS_SDK_TEST_APP_ID)"
+            isEnabled = "YES">
+         </EnvironmentVariable>
+         <EnvironmentVariable
+            key = "IOS_SDK_TEST_CLIENT_TOKEN"
+            value = "$(IOS_SDK_TEST_CLIENT_TOKEN)"
             isEnabled = "YES">
          </EnvironmentVariable>
          <EnvironmentVariable
@@ -105,13 +110,13 @@
       allowLocationSimulation = "YES">
       <AdditionalOptions>
          <AdditionalOption
-            key = "MallocScribble"
-            value = ""
+            key = "DYLD_INSERT_LIBRARIES"
+            value = "/usr/lib/libgmalloc.dylib"
             isEnabled = "YES">
          </AdditionalOption>
          <AdditionalOption
-            key = "DYLD_INSERT_LIBRARIES"
-            value = "/usr/lib/libgmalloc.dylib"
+            key = "NSZombieEnabled"
+            value = "YES"
             isEnabled = "YES">
          </AdditionalOption>
          <AdditionalOption
@@ -120,8 +125,8 @@
             isEnabled = "YES">
          </AdditionalOption>
          <AdditionalOption
-            key = "NSZombieEnabled"
-            value = "YES"
+            key = "MallocScribble"
+            value = ""
             isEnabled = "YES">
          </AdditionalOption>
       </AdditionalOptions>

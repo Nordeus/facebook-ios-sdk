@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Scheme
-   LastUpgradeVersion = "0500"
+   LastUpgradeVersion = "0510"
    version = "1.3">
    <BuildAction
       parallelizeBuildables = "YES"
@@ -33,8 +33,18 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "B9CBC518152537270036AA71"
-               BuildableName = "FacebookSDKTests.octest"
+               BuildableName = "FacebookSDKTests.xctest"
                BlueprintName = "FacebookSDKTests"
+               ReferencedContainer = "container:facebook-ios-sdk.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "89263C1A1926CBA500A44711"
+               BuildableName = "FacebookSDKApplicationTests.xctest"
+               BlueprintName = "FacebookSDKApplicationTests"
                ReferencedContainer = "container:facebook-ios-sdk.xcodeproj">
             </BuildableReference>
          </TestableReference>
@@ -43,7 +53,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "B9CBC518152537270036AA71"
-            BuildableName = "FacebookSDKTests.octest"
+            BuildableName = "FacebookSDKTests.xctest"
             BlueprintName = "FacebookSDKTests"
             ReferencedContainer = "container:facebook-ios-sdk.xcodeproj">
          </BuildableReference>
@@ -52,6 +62,11 @@
          <EnvironmentVariable
             key = "IOS_SDK_TEST_APP_ID"
             value = "$(IOS_SDK_TEST_APP_ID)"
+            isEnabled = "YES">
+         </EnvironmentVariable>
+         <EnvironmentVariable
+            key = "IOS_SDK_TEST_CLIENT_TOKEN"
+            value = "$(IOS_SDK_TEST_CLIENT_TOKEN)"
             isEnabled = "YES">
          </EnvironmentVariable>
          <EnvironmentVariable

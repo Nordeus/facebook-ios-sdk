@@ -18,7 +18,7 @@
 # This script exports the source code to another directory that can be
 # added to a different git repo.
 
-. ${FB_SDK_SCRIPT:-$(dirname $0)}/common.sh
+. "${FB_SDK_SCRIPT:-$(dirname "$0")}/common.sh"
 
 usage() {
 cat <<EOF
@@ -58,15 +58,15 @@ if [ -f "$OUTPUT_DIR" ]; then
 fi
 
 # Create a temp directory to stage the files from the index into.
-CURRENT_SCRIPT_NAME=`basename $0`
-EXPORT_TEMP_DIR=`mktemp -d -t ${CURRENT_SCRIPT_NAME}` || die "Failed to create temp directory"
+CURRENT_SCRIPT_NAME=`basename "$0"`
+EXPORT_TEMP_DIR=`mktemp -d -t "${CURRENT_SCRIPT_NAME}"` || die "Failed to create temp directory"
 
 # Export the files from the index to the temp directory. This avoids picking
 # up build artifacts or other files that are not in the git index.
 git checkout-index -a --prefix="$EXPORT_TEMP_DIR"/
 
 # Sync the exported files from the temp directory into $OUTPUT_DIR
-rsync -avm --delete --exclude '.git' --exclude 'vendor/*' --exclude 'internal' "$EXPORT_TEMP_DIR"/ "$OUTPUT_DIR"/
+rsync -avm --delete --exclude '.git' --exclude 'vendor/*' --exclude 'internal' --exclude 'ads' "$EXPORT_TEMP_DIR"/ "$OUTPUT_DIR"/
 
 # Cleanup the temp folder
 rm -r "$EXPORT_TEMP_DIR"

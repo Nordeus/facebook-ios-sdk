@@ -89,7 +89,7 @@ static NSString *const SUUserNameKeyFormat = @"SUUserName%li";
     // create a session object, with defaults accross the board, except that we provide a custom
     // instance of FBSessionTokenCachingStrategy
     FBSession *session = [[FBSession alloc] initWithAppID:nil
-                                              permissions:@[@"basic_info",@"user_birthday"]
+                                              permissions:@[@"public_profile",@"user_birthday"]
                                           urlSchemeSuffix:nil
                                        tokenCacheStrategy:tokenCachingStrategy];
     return session;
@@ -125,8 +125,8 @@ static NSString *const SUUserNameKeyFormat = @"SUUserName%li";
 
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     if (user != nil) {
-        NSLog(@"SUUserManager updating slot %li: fbid = %@, name = %@", (long)slot, user.id, user.name);
-        [defaults setObject:user.id forKey:idKey];
+        NSLog(@"SUUserManager updating slot %li: fbid = %@, name = %@", (long)slot, user.objectID, user.name);
+        [defaults setObject:user.objectID forKey:idKey];
         [defaults setObject:user.name forKey:nameKey];
     } else {
         NSLog(@"SUUserManager clearing slot %li", (long)slot);
