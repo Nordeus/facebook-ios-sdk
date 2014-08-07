@@ -506,8 +506,8 @@
 		E2223AEB1554573900126FD2 /* FBPlacePickerViewController.h in Headers */ = {isa = PBXBuildFile; fileRef = E2223AE91554573900126FD2 /* FBPlacePickerViewController.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		E23E5A0B1521161900A011A8 /* FBError.h in Headers */ = {isa = PBXBuildFile; fileRef = E23E5A091521161900A011A8 /* FBError.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		E28B75541547D85A002E30C0 /* FBFriendPickerViewController.h in Headers */ = {isa = PBXBuildFile; fileRef = E28B75521547D85A002E30C0 /* FBFriendPickerViewController.h */; settings = {ATTRIBUTES = (Public, ); }; };
-		F6B53A461961F228008720AC /* FBAmbientDeviceInfo.m in Sources */ = {isa = PBXBuildFile; fileRef = 5F1C7B95195B9B1100397CBB /* FBAmbientDeviceInfo.m */; };
-		F6B53A511961F229008720AC /* FBAmbientDeviceInfo.m in Sources */ = {isa = PBXBuildFile; fileRef = 5F1C7B95195B9B1100397CBB /* FBAmbientDeviceInfo.m */; };
+		F6B53A461961F228008720AC /* (null) in Sources */ = {isa = PBXBuildFile; };
+		F6B53A511961F229008720AC /* (null) in Sources */ = {isa = PBXBuildFile; };
 /* End PBXBuildFile section */
 
 /* Begin PBXBuildRule section */
@@ -652,13 +652,6 @@
 			proxyType = 1;
 			remoteGlobalIDString = 89263C041926CBA500A44711;
 			remoteInfo = FacebookSDKTestHost;
-		};
-		89B220991926C08C00FD98CF /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 85C610871699109000E7BB7D /* OCMock.xcodeproj */;
-			proxyType = 2;
-			remoteGlobalIDString = D31108AD1828DB8700737925;
-			remoteInfo = OCMockLibTests;
 		};
 		B9CBC52D1525382D0036AA71 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -1462,9 +1455,8 @@
 			isa = PBXGroup;
 			children = (
 				85C610911699109000E7BB7D /* OCMock.framework */,
-				85C610931699109000E7BB7D /* OCMockTests.xctest */,
+				85C610931699109000E7BB7D /* OCMockTests.octest */,
 				85C610951699109000E7BB7D /* libOCMock.a */,
-				89B2209A1926C08C00FD98CF /* OCMockLibTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -2075,10 +2067,10 @@
 			remoteRef = 85C610901699109000E7BB7D /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
-		85C610931699109000E7BB7D /* OCMockTests.xctest */ = {
+		85C610931699109000E7BB7D /* OCMockTests.octest */ = {
 			isa = PBXReferenceProxy;
 			fileType = wrapper.cfbundle;
-			path = OCMockTests.xctest;
+			path = OCMockTests.octest;
 			remoteRef = 85C610921699109000E7BB7D /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
@@ -2087,13 +2079,6 @@
 			fileType = archive.ar;
 			path = libOCMock.a;
 			remoteRef = 85C610941699109000E7BB7D /* PBXContainerItemProxy */;
-			sourceTree = BUILT_PRODUCTS_DIR;
-		};
-		89B2209A1926C08C00FD98CF /* OCMockLibTests.xctest */ = {
-			isa = PBXReferenceProxy;
-			fileType = wrapper.cfbundle;
-			path = OCMockLibTests.xctest;
-			remoteRef = 89B220991926C08C00FD98CF /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
 /* End PBXReferenceProxy section */
@@ -2202,7 +2187,7 @@
 				85D1B1F61908893400880700 /* FBAppLinksIntegrationTests.m in Sources */,
 				84F9921A1871CACB00E3369F /* FBDialogsParams.m in Sources */,
 				84F991FB1871C82800E3369F /* FBAppLinkData.m in Sources */,
-				F6B53A511961F229008720AC /* FBAmbientDeviceInfo.m in Sources */,
+				F6B53A511961F229008720AC /* (null) in Sources */,
 				84F991FD1871C82800E3369F /* FBDataDiskCache.m in Sources */,
 				89BEB40318E47EF4006C97A6 /* FBLoginTooltipView.m in Sources */,
 				9D3D36AD17CBE6C500B9B049 /* FBTaskCompletionSource.m in Sources */,
@@ -2414,7 +2399,7 @@
 				84F992181871CACB00E3369F /* FBDialogsParams.m in Sources */,
 				89BEB3FF18E47EF3006C97A6 /* FBLoginTooltipView.m in Sources */,
 				9D5B916C17BD37A8009DBABB /* FBSessionInlineWebViewLoginStategy.m in Sources */,
-				F6B53A461961F228008720AC /* FBAmbientDeviceInfo.m in Sources */,
+				F6B53A461961F228008720AC /* (null) in Sources */,
 				84F992771871DCA200E3369F /* FBImageResourceLoader.m in Sources */,
 				89BEB40018E47EF3006C97A6 /* FBLoginView.m in Sources */,
 				85BDF76317CD57C3002E7225 /* FBAppBridgeTests.m in Sources */,
@@ -2621,6 +2606,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 892B1FA51926A84100E61379 /* FacebookSDK-LogicTests.xcconfig */;
 			buildSettings = {
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
 			};
 			name = Debug;
 		};
@@ -2628,6 +2614,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 892B1FA51926A84100E61379 /* FacebookSDK-LogicTests.xcconfig */;
 			buildSettings = {
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
 			};
 			name = Release;
 		};
@@ -2656,6 +2643,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 892B1FA51926A84100E61379 /* FacebookSDK-LogicTests.xcconfig */;
 			buildSettings = {
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
 			};
 			name = Release64;
 		};
@@ -2684,6 +2672,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 892B1FA51926A84100E61379 /* FacebookSDK-LogicTests.xcconfig */;
 			buildSettings = {
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
 			};
 			name = Debug64;
 		};
