@@ -145,7 +145,7 @@ static BOOL FBIsDeviceIPad() {
 
 - (CGAffineTransform)transformForOrientation {
     UIInterfaceOrientation orientation = [UIApplication sharedApplication].statusBarOrientation;
-	if ([[[UIDevice currentDevice] systemVersion] floatValue] >= 8.0) {
+	if (wrongDeviceOrientation) {
 		return CGAffineTransformIdentity;
 	}
 	else if (orientation == UIInterfaceOrientationLandscapeLeft) {
