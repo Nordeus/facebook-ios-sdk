@@ -72,7 +72,7 @@ static NSString *g_defaultUrlSchemeSuffix = nil;
 static NSString *g_facebookDomainPart = nil;
 static NSString *g_resourceBundleName = nil;
 static FBRestrictedTreatment g_restrictedTreatment;
-static BOOL g_enableLegacyGraphAPI = NO;
+static BOOL g_enableLegacyGraphAPI = YES;
 
 
 + (void)load {
