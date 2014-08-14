@@ -145,7 +145,10 @@ static BOOL FBIsDeviceIPad() {
 
 - (CGAffineTransform)transformForOrientation {
     UIInterfaceOrientation orientation = [UIApplication sharedApplication].statusBarOrientation;
-    if (orientation == UIInterfaceOrientationLandscapeLeft) {
+	if ([[[UIDevice currentDevice] systemVersion] floatValue] >= 8.0) {
+		return CGAffineTransformIdentity;
+	}
+	else if (orientation == UIInterfaceOrientationLandscapeLeft) {
         return CGAffineTransformMakeRotation(M_PI * 1.5);
     } else if (orientation == UIInterfaceOrientationLandscapeRight) {
         return CGAffineTransformMakeRotation(M_PI/2);
@@ -177,9 +180,9 @@ static BOOL FBIsDeviceIPad() {
 
     _orientation = [UIApplication sharedApplication].statusBarOrientation;
     if (UIInterfaceOrientationIsLandscape(_orientation)) {
-        self.frame = CGRectMake(kPadding, kPadding, height, width);
+        self.frame = deviceOrientedRect(CGRectMake(kPadding, kPadding, height, width));
     } else {
-        self.frame = CGRectMake(kPadding, kPadding, width, height);
+        self.frame = deviceOrientedRect(CGRectMake(kPadding, kPadding, width, height));
     }
     self.center = center;
 
